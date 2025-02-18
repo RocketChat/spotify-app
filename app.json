@@ -1,0 +1,141 @@
+{
+    "id": "b7a23687-a38b-48ec-89bf-0f8ed1bf6d25",
+    "version": "0.0.1",
+    "requiredApiVersion": "^1.19.0",
+    "iconFile": "spotify-icon.png",
+    "author": {
+        "name": "Morgan Lemke",
+        "homepage": "rocket.chat",
+        "support": "rocket.chat"
+    },
+    "name": "Spotify-App",
+    "nameSlug": "spotify-app",
+    "classFile": "SpotifyAppApp.ts",
+    "description": "Spotify RC integration that doubles as training tool",
+    "implements": [],
+    "permissions": [
+        {
+            "name": "user.read"
+        },
+        {
+            "name": "user.write"
+        },
+        {
+            "name": "upload.read"
+        },
+        {
+            "name": "upload.write"
+        },
+        {
+            "name": "server-setting.read"
+        },
+        {
+            "name": "server-setting.write"
+        },
+        {
+            "name": "room.read"
+        },
+        {
+            "name": "room.write"
+        },
+        {
+            "name": "role.read"
+        },
+        {
+            "name": "role.write"
+        },
+        {
+            "name": "message.read"
+        },
+        {
+            "name": "message.write"
+        },
+        {
+            "name": "moderation.read"
+        },
+        {
+            "name": "moderation.write"
+        },
+        {
+            "name": "threads.read"
+        },
+        {
+            "name": "livechat-status.read"
+        },
+        {
+            "name": "livechat-custom-fields.write"
+        },
+        {
+            "name": "livechat-visitor.read"
+        },
+        {
+            "name": "livechat-visitor.write"
+        },
+        {
+            "name": "livechat-message.read"
+        },
+        {
+            "name": "livechat-message.write"
+        },
+        {
+            "name": "livechat-message.multiple"
+        },
+        {
+            "name": "livechat-room.read"
+        },
+        {
+            "name": "livechat-room.write"
+        },
+        {
+            "name": "livechat-department.read"
+        },
+        {
+            "name": "livechat-department.write"
+        },
+        {
+            "name": "livechat-department.multiple"
+        },
+        {
+            "name": "env.read"
+        },
+        {
+            "name": "cloud.workspace-token"
+        },
+        {
+            "name": "ui.interact"
+        },
+        {
+            "name": "ui.registerButtons"
+        },
+        {
+            "name": "scheduler"
+        },
+        {
+            "name": "networking"
+        },
+        {
+            "name": "persistence"
+        },
+        {
+            "name": "slashcommand"
+        },
+        {
+            "name": "video-conference.read"
+        },
+        {
+            "name": "video-conference.write"
+        },
+        {
+            "name": "video-conference-provider"
+        },
+        {
+            "name": "api"
+        },
+        {
+            "name": "oauth-app.read"
+        },
+        {
+            "name": "oauth-app.write"
+        }
+    ]
+}
