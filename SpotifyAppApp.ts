@@ -7,11 +7,12 @@ import {
     IModify,
     IPersistence,
     IRead,
+    IUIKitSurfaceViewParam,
 } from '@rocket.chat/apps-engine/definition/accessors';
 import { App } from '@rocket.chat/apps-engine/definition/App';
 import { IAppInfo, RocketChatAssociationModel, RocketChatAssociationRecord } from '@rocket.chat/apps-engine/definition/metadata';
 import { UIActionButtonContext } from '@rocket.chat/apps-engine/definition/ui';
-import { persistenceconstants, uiconstants } from './constants/constants';
+import { uiconstants } from './constants/constants';
 import { IUIKitResponse, UIKitActionButtonInteractionContext, UIKitSurfaceType, UIKitViewSubmitInteractionContext } from '@rocket.chat/apps-engine/definition/uikit';
 import { getLoginSection } from './ui/loginSection';
 import { ApiSecurity, ApiVisibility } from '@rocket.chat/apps-engine/definition/api';
@@ -19,8 +20,13 @@ import { authEndpoint } from './endpoints/authEndpoint';
 import { AppPersistence } from './persistance/persistance';
 import { settings } from './settings/settings';
 import { getStatus } from './slash_commands/slashCommands';
+import { getSpotifyMenuSection } from './ui/spotifyMenuSection';
+
+import { MenuBuilder } from './ui/menuBuilder';
+import { MessageBuilder } from './ui/messageBuilder';
 
 export class SpotifyAppApp extends App {
+    
     constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
         super(info, logger, accessors);
     }
@@ -32,11 +38,18 @@ export class SpotifyAppApp extends App {
         // Register the settings
         await Promise.all(settings.map((setting) => configuration.settings.provideSetting(setting)));
 
-        // Register the button
+        // Register the button for login
         configuration.ui.registerButton({
             actionId: uiconstants.USER_SETTING_BUTTON,
-            labelI18n: 'user_settings', 
+            labelI18n: uiconstants.USER_SETTING_MODAL,
             context: UIActionButtonContext.USER_DROPDOWN_ACTION,
+        });
+
+        //register button for sharing
+        configuration.ui.registerButton({
+            actionId: uiconstants.SHARE_SONG_ACTION,
+            labelI18n: uiconstants.SHARE_SONG_BUTTON,
+            context: UIActionButtonContext.ROOM_ACTION 
         });
 
         // Register the endpoint
@@ -58,6 +71,27 @@ export class SpotifyAppApp extends App {
         const persistanceManager = new AppPersistence(persistence, read.getPersistenceReader(), read);
 
         switch (actionId) {
+            case uiconstants.SHARE_SONG_ACTION: {
+                this.getLogger().log('User wants to share a song');
+                const spotifySideBar = async (logger: ILogger) : Promise<IUIKitSurfaceViewParam> => {
+                
+                    const spotifyMenuSection = getSpotifyMenuSection(logger);
+                
+                    return  {
+                        type: UIKitSurfaceType.CONTEXTUAL_BAR,
+                        title: { text: 'Spotify', type: 'plain_text' },
+                        blocks: [
+                            ...spotifyMenuSection
+                        ]
+                    };
+                
+                }
+                const view = await spotifySideBar(this.getLogger());
+                // Send the view (contextual bar) to the room
+                await modify.getUiController().openSurfaceView(view, context.getInteractionData(), user);
+
+                break;
+            }
             case uiconstants.USER_SETTING_BUTTON: {
                 this.getLogger().log('User Opened User Settings Modal');
 
@@ -110,13 +144,13 @@ export class SpotifyAppApp extends App {
                 this.getLogger().log('Workspace URL:', workspaceUrl);
 
                 const redirectUri = workspaceUrl + this.getAccessors().providedApiEndpoints[0].computedPath;// The URL to redirect back to after authorization
-                const scope = 'user-library-read user-read-email'; // Spotify API scopes you need
+                const scope = 'user-library-read user-read-email user-top-read user-read-recently-played';// Spotify API scopes you need
+
                 const state = user.id;
 
                 this.getLogger().log('Redirect URI:', redirectUri);
 
-                
-                //const clientId = '0225eec752e54b57b1bc6e51039afab5'; // Your Spotify App's Client ID
+                //get settings value of client id
                 const clientId = await read.getEnvironmentReader().getSettings().getValueById('client id');
 
                 const authUrl = `https://accounts.spotify.com/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}`;
@@ -129,13 +163,22 @@ export class SpotifyAppApp extends App {
                         blocks: [
                             {
                                 type: 'section',
-                                text: { type: 'mrkdwn', text: `Click here to authorize Spotify: [Authorize Spotify](${authUrl})` },
+                                text: { type: 'plain_text', text: 'Click below to sign in to Spotify:' },
+                                accessory: {
+                                    type: 'button',
+                                    text: { type: 'plain_text', text: 'Sign-In to Spotify' },
+                                    url: authUrl,
+                                    appId: this.getID(),
+                                    blockId: 'authorize-spotify-block',
+                                    actionId: 'authorize-spotify-action',
+                                },
                             },
                         ],
                     },
                     { triggerId: context.getInteractionData().triggerId },
                     user
                 );
+                
                 break;
             }
         }
@@ -148,43 +191,45 @@ export class SpotifyAppApp extends App {
         persistence: IPersistence,
         modify: IModify
     ): Promise<void> { 
-        const { actionId, room, user} = context.getInteractionData();
+        var { actionId, room, user} = context.getInteractionData();
+        var songId = '';
 
-        this.getLogger().log('User Clicked Block Action:', actionId);
+        if (actionId.startsWith('share_song_')) {
+            songId = actionId.replace('share_song_', '');
+            actionId = uiconstants.SHARE_SONG_ACTION;
+            this.getLogger().log('User Clicked Share Song Button:', songId);
+        }else{
+            this.getLogger().log('User Clicked Block Action:', actionId);
+        }
 
         switch (actionId) {
-            case uiconstants.CLIENT_ID_INPUT: {
-                this.getLogger().log('User Submitted Modal with Client ID');
-            
-                // Step 1: Retrieve input value from modal state
-                const modalState = (context.getInteractionData() as any).state || {};
-                const input = modalState['client_id_input']?.['client_id_input_field'] as string;
-            
-                if (!input || input.trim() === '') {
-                    this.getLogger().warn('No Client ID was provided.');
-                    return; // Exit early if no input is provided
-                }
-            
-                // Step 2: Check if the input is already persisted
-                const association = new RocketChatAssociationRecord(
-                    RocketChatAssociationModel.USER,
-                    `${context.getInteractionData().user.id}-${persistenceconstants.CLIENT_ID}`
-                );
-            
-                const existingClientId = await read.getPersistenceReader().readByAssociation(association) as unknown as string | undefined;
-            
-                if (existingClientId && existingClientId === input) {
-                    this.getLogger().log('Client ID has not changed, no update needed.');
-                    return; // Exit early if the input matches the persisted value
-                }
-            
-                // Step 3: Persist the new Client ID
-                await persistence.updateByAssociation(association, { value: input });
-            
-                this.getLogger().log('Stored new Client ID:', input);
-            
+            case uiconstants.MOST_PLAYED_SONG_ACTION: { 
+                const menuBuilderInstance = new MenuBuilder();
+                this.getLogger().log('User Clicked Most Played Songs Button');
+                const view = await menuBuilderInstance.buildMostPlayedView(this.getLogger(),http, read, persistence, user);
+                await modify.getUiController().openSurfaceView(view, { triggerId: context.getInteractionData().triggerId }, user);
+                break;
+            }
+            case uiconstants.RECENTLY_PLAYED_SONG_ACTION: {
+                const menuBuilderInstance = new MenuBuilder();
+                this.getLogger().log('User Clicked Recently Played Songs Button');
+                const view = await menuBuilderInstance.buildRecentPlayedView(this.getLogger(),http, read, persistence, user);
+                await modify.getUiController().openSurfaceView(view, { triggerId: context.getInteractionData().triggerId }, user);
+                break;
+            }
+
+            case uiconstants.SHARE_SONG_ACTION: {
+                this.getLogger().log('User Clicked Share Song Button Executing');
+                const messageBuilderInstance = new MessageBuilder();
+                this.getLogger().log('The user is:', user+' and the room is:', room.id+' and the songId is:', songId);
+                const message = await messageBuilderInstance.buildShareSongMessage(songId, user, room,persistence, read, http);
+                this.getLogger().log('The message is:', JSON.stringify(message));
+                const messageBuilder = await modify.getCreator().startMessage(message);
+                await modify.getCreator().finish(messageBuilder);
                 break;
             }
         }
     }
+
 }
+

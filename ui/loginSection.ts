@@ -22,22 +22,6 @@ export function getLoginSection(logger: ILogger, tokenAvailable: boolean): Layou
                 type: 'mrkdwn',
                 text: "❌ You must log in to Spotify."
             }
-        },
-        {
-            type: 'input',
-            blockId: 'client_id_input',
-            element: {
-                type: 'plain_text_input',
-                actionId: uiconstants.CLIENT_ID_INPUT,
-                placeholder: { type: 'plain_text', text: 'Enter Client ID' },
-                initialValue: '',
-                appId: APP_ID,
-                blockId: 'client_id_input',
-            },
-            label: {
-                type: 'plain_text',
-                text: 'Spotify Client ID'
-            }
         }
     ];
 }
