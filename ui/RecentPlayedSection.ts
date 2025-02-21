@@ -60,7 +60,7 @@ export async function getRecentPlayedSongsSection(logger: ILogger, http: IHttp, 
 
 async function getRecentlyPlayedSongs(logger: ILogger, http: IHttp, read: IRead, persistance: IPersistence, user: IUser): Promise<any[]> {
     logger.log('Fetching recently played tracks');
-    const persistanceManager = new AppPersistence(persistance, read.getPersistenceReader(), read);
+    const persistanceManager = new AppPersistence(persistance, read.getPersistenceReader(), read, logger);
     const token = await persistanceManager.get_token(user?.id || '');
     logger.log('Token is', token);
 

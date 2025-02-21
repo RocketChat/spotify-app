@@ -3,6 +3,7 @@ import { LayoutBlock } from "@rocket.chat/ui-kit";
 import { APP_ID, uiconstants } from "../constants/constants";
 
 export function getLoginSection(logger: ILogger, tokenAvailable: boolean): LayoutBlock[] {
+    
     if (tokenAvailable) {
         return [
             {

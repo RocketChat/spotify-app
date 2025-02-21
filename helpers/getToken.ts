@@ -9,7 +9,7 @@ export class GetToken {
         // Empty constructor
     }
     public async getToken(app: SpotifyAppApp, request: IApiRequest, _read: IRead, _http: IHttp, _persistence: IPersistence): Promise<boolean> {
-        const persistanceManager = new AppPersistence(_persistence, _read.getPersistenceReader(), _read);
+        const persistanceManager = new AppPersistence(_persistence, _read.getPersistenceReader(), _read, app.getLogger());
         // Log the query directly from request.query instead of request.content.query
         app.getLogger().log('Incoming query:', request.query);
         //this.app.getLogger().log('We are persisting the code with a value of', request.query.code, 'and user', request.query.state);
@@ -62,8 +62,8 @@ export class GetToken {
             app.getLogger().log('setting job to refresh token');
 
             const tokenRefresher = new TokenRefresh();
-            tokenRefresher.refreshToken(app.getLogger(), app, request, _read, _http, _persistence);
-
+            tokenRefresher.refreshToken(app.getLogger(), app, request, _read, _http, _persistence, expiresIn);
+           
             return true;
 
     }catch (error) {

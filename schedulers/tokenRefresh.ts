@@ -11,14 +11,13 @@ export class TokenRefresh {
     constructor() {
     }
 
-    public async refreshToken(logger: ILogger, app: SpotifyAppApp, request: IApiRequest, _read: IRead, _http: IHttp, _persistence: IPersistence): Promise<void> {
+    public async refreshToken(logger, app, request, _read, _http, _persistence, expiresIn) {
+        logger.log('Waiting for token refresh');
+        const waitTime = 5000;
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        logger.log('Token refresh time reached');
 
-        logger.log('Building Process');
-        this.processor.processor = async (): Promise<void> => {
-            const tokenGetter = new GetToken();
-            const getToken = await tokenGetter.getToken(app, request, _read, _http, _persistence);
-            return;
-        }
-    }
-
+        const tokenGetter = new GetToken();
+        const refreshed = tokenGetter.getToken(app, request, _read, _http, _persistence);
+    } 
 }

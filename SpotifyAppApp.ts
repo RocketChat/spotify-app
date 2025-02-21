@@ -24,20 +24,24 @@ import { getSpotifyMenuSection } from './ui/spotifyMenuSection';
 
 import { MenuBuilder } from './ui/menuBuilder';
 import { MessageBuilder } from './ui/messageBuilder';
+import { StartupType } from '@rocket.chat/apps-engine/definition/scheduler';
+import { IRoom } from '@rocket.chat/apps-engine/definition/rooms';
 
 export class SpotifyAppApp extends App {
-    
+
+
     constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
         super(info, logger, accessors);
     }
 
     public async extendConfiguration(configuration: IConfigurationExtend, environmentRead: IEnvironmentRead): Promise<void> {
+
         // Register the slash command
         await configuration.slashCommands.provideSlashCommand(new getStatus(this.getLogger()));
 
         // Register the settings
         await Promise.all(settings.map((setting) => configuration.settings.provideSetting(setting)));
-
+        
         // Register the button for login
         configuration.ui.registerButton({
             actionId: uiconstants.USER_SETTING_BUTTON,
@@ -57,7 +61,8 @@ export class SpotifyAppApp extends App {
 			visibility: ApiVisibility.PUBLIC,
 			security: ApiSecurity.UNSECURE,
 			endpoints: [new authEndpoint(this)],
-		});
+		},);
+
     }
 
     public async executeActionButtonHandler(
@@ -65,10 +70,11 @@ export class SpotifyAppApp extends App {
         read: IRead,
         http: IHttp,
         persistence: IPersistence,
-        modify: IModify
+        modify: IModify,
+        room: IRoom
     ): Promise<IUIKitResponse> {
         const { actionId, user } = context.getInteractionData();
-        const persistanceManager = new AppPersistence(persistence, read.getPersistenceReader(), read);
+        const persistanceManager = new AppPersistence(persistence, read.getPersistenceReader(), read, this.getLogger());
 
         switch (actionId) {
             case uiconstants.SHARE_SONG_ACTION: {
@@ -96,18 +102,25 @@ export class SpotifyAppApp extends App {
                 this.getLogger().log('User Opened User Settings Modal');
 
                 var loginSectionBlock;
-                if (await persistanceManager.does_user_have_token(user.id)){
+                var loginButton;
+                //gets token and validates it
+                const token = await persistanceManager.get_token(user.id);
+                const responseValue = await persistanceManager.validateAccessToken(token, http);
+
+                if (responseValue.success) {
                     loginSectionBlock = await getLoginSection(this.getLogger(), true);
+                    loginButton='Login Into Spotify';
                 }
                 else { 
                     loginSectionBlock = await getLoginSection(this.getLogger(), false);
+                    loginButton='Re-Login Into Spotify';
                 }
                 await modify.getUiController().openSurfaceView(
                     {
                         type: UIKitSurfaceType.MODAL,
                         title: { text: uiconstants.USER_SETTING_MODAL, type: 'plain_text' },
                         blocks: [...loginSectionBlock],
-                        submit: { text: { text: 'Login Into Spotify', type: 'plain_text' }, type: 'button', actionId: uiconstants.SPOTIFY_SIGN_IN_BUTTON, appId: this.getID(), blockId: 'sign-in' },
+                        submit: { text: { text: loginButton, type: 'plain_text' }, type: 'button', actionId: uiconstants.SPOTIFY_SIGN_IN_BUTTON, appId: this.getID(), blockId: 'sign-in' },
                     },
                     { triggerId: context.getInteractionData().triggerId },
                     user
@@ -121,7 +134,7 @@ export class SpotifyAppApp extends App {
     public async executeViewSubmitHandler(context: UIKitViewSubmitInteractionContext, read: IRead, http: IHttp, persistence: IPersistence, modify: IModify): Promise<void> {
         const { view, user } = context.getInteractionData();
 
-        const persistanceManager = new AppPersistence(persistence, read.getPersistenceReader(), read);
+        const persistanceManager = new AppPersistence(persistence, read.getPersistenceReader(), read, this.getLogger());
 
         this.getLogger().log('User Submitted View:', view.id);
 
@@ -222,7 +235,7 @@ export class SpotifyAppApp extends App {
                 this.getLogger().log('User Clicked Share Song Button Executing');
                 const messageBuilderInstance = new MessageBuilder();
                 this.getLogger().log('The user is:', user+' and the room is:', room.id+' and the songId is:', songId);
-                const message = await messageBuilderInstance.buildShareSongMessage(songId, user, room,persistence, read, http);
+                const message = await messageBuilderInstance.buildShareSongMessage(songId, user, room, persistence, read, http, this.getLogger());
                 this.getLogger().log('The message is:', JSON.stringify(message));
                 const messageBuilder = await modify.getCreator().startMessage(message);
                 await modify.getCreator().finish(messageBuilder);

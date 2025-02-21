@@ -1,4 +1,4 @@
-import { IHttp, IPersistence, IRead } from "@rocket.chat/apps-engine/definition/accessors";
+import { IHttp, ILogger, IPersistence, IRead } from "@rocket.chat/apps-engine/definition/accessors";
 import { MessageActionType } from "@rocket.chat/apps-engine/definition/messages";
 import { IMessage } from "@rocket.chat/apps-engine/definition/messages";
 import { IRoom } from "@rocket.chat/apps-engine/definition/rooms";
@@ -10,9 +10,9 @@ export class MessageBuilder {
         // Empty constructor
     }
 
-    public async buildShareSongMessage(songId: string, user: IUser, room: IRoom, persistance: IPersistence, read: IRead, http: IHttp): Promise<IMessage> {
+    public async buildShareSongMessage(songId: string, user: IUser, room: IRoom, persistance: IPersistence, read: IRead, http: IHttp, logger: ILogger): Promise<IMessage> {
         // Fetch song details from Spotify
-        const songData = await this.getSongData(songId, persistance, read, user, http);
+        const songData = await this.getSongData(songId, persistance, read, user, http, logger);
 
         // Extract the necessary details
         const songName: string = songData.name;
@@ -51,9 +51,9 @@ export class MessageBuilder {
 
     return message;
     }
-    async getSongData(songId: string, persistance: IPersistence, read: IRead, user: IUser, http: IHttp): Promise<any> {
+    async getSongData(songId: string, persistance: IPersistence, read: IRead, user: IUser, http: IHttp, logger: ILogger): Promise<any> {
         // Instantiate the persistence manager and retrieve the token
-        const persistanceManager = new AppPersistence(persistance, read.getPersistenceReader(), read);
+        const persistanceManager = new AppPersistence(persistance, read.getPersistenceReader(), read, logger);
         const token = await persistanceManager.get_token(user?.id || '');
 
         // Construct the Spotify endpoint for fetching track details
