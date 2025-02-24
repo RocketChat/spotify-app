@@ -24,11 +24,13 @@ import { getSpotifyMenuSection } from './ui/spotifyMenuSection';
 
 import { MenuBuilder } from './ui/menuBuilder';
 import { MessageBuilder } from './ui/messageBuilder';
-import { StartupType } from '@rocket.chat/apps-engine/definition/scheduler';
 import { IRoom } from '@rocket.chat/apps-engine/definition/rooms';
+import { IUser } from '@rocket.chat/apps-engine/definition/users';
+import { tokenRefreshJob } from './schedulers/tokenRefreshJob';
 
 export class SpotifyAppApp extends App {
 
+    public user: IUser;
 
     constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
         super(info, logger, accessors);
@@ -63,6 +65,8 @@ export class SpotifyAppApp extends App {
 			endpoints: [new authEndpoint(this)],
 		},);
 
+        await configuration.scheduler.registerProcessors([new tokenRefreshJob(this).getSpotifyTokenRefresh()]);
+
     }
 
     public async executeActionButtonHandler(
@@ -75,6 +79,8 @@ export class SpotifyAppApp extends App {
     ): Promise<IUIKitResponse> {
         const { actionId, user } = context.getInteractionData();
         const persistanceManager = new AppPersistence(persistence, read.getPersistenceReader(), read, this.getLogger());
+        this.user=user;
+        this.getLogger().log('user saved as global variable:', this.user); 
 
         switch (actionId) {
             case uiconstants.SHARE_SONG_ACTION: {
@@ -206,12 +212,19 @@ export class SpotifyAppApp extends App {
     ): Promise<void> { 
         var { actionId, room, user} = context.getInteractionData();
         var songId = '';
+        var artistId = '';
 
         if (actionId.startsWith('share_song_')) {
             songId = actionId.replace('share_song_', '');
             actionId = uiconstants.SHARE_SONG_ACTION;
             this.getLogger().log('User Clicked Share Song Button:', songId);
-        }else{
+        }
+        else if(actionId.startsWith('share_artist_')){
+            artistId = actionId.replace('share_artist_', '');
+            actionId = uiconstants.SHARE_ARTIST_ACTION;
+            this.getLogger().log('User Clicked Share Artist Button:', actionId);
+        }
+        else{
             this.getLogger().log('User Clicked Block Action:', actionId);
         }
 
@@ -219,7 +232,7 @@ export class SpotifyAppApp extends App {
             case uiconstants.MOST_PLAYED_SONG_ACTION: { 
                 const menuBuilderInstance = new MenuBuilder();
                 this.getLogger().log('User Clicked Most Played Songs Button');
-                const view = await menuBuilderInstance.buildMostPlayedView(this.getLogger(),http, read, persistence, user);
+                const view = await menuBuilderInstance.buildMostPlayedSongView(this.getLogger(),http, read, persistence, user);
                 await modify.getUiController().openSurfaceView(view, { triggerId: context.getInteractionData().triggerId }, user);
                 break;
             }
@@ -230,12 +243,28 @@ export class SpotifyAppApp extends App {
                 await modify.getUiController().openSurfaceView(view, { triggerId: context.getInteractionData().triggerId }, user);
                 break;
             }
-
+            case uiconstants.MOST_PLAYED_ARTIST_ACTION: {
+                const menuBuilderInstance = new MenuBuilder();
+                this.getLogger().log('User Clicked Most Played Artists Button');
+                const view = await menuBuilderInstance.buildMostPlayedArtistView(this.getLogger(),http, read, persistence, user);
+                await modify.getUiController().openSurfaceView(view, { triggerId: context.getInteractionData().triggerId }, user);
+                break;
+            }
             case uiconstants.SHARE_SONG_ACTION: {
                 this.getLogger().log('User Clicked Share Song Button Executing');
                 const messageBuilderInstance = new MessageBuilder();
                 this.getLogger().log('The user is:', user+' and the room is:', room.id+' and the songId is:', songId);
                 const message = await messageBuilderInstance.buildShareSongMessage(songId, user, room, persistence, read, http, this.getLogger());
+                this.getLogger().log('The message is:', JSON.stringify(message));
+                const messageBuilder = await modify.getCreator().startMessage(message);
+                await modify.getCreator().finish(messageBuilder);
+                break;
+            }
+            case uiconstants.SHARE_ARTIST_ACTION: {
+                this.getLogger().log('User Clicked Share Artist Button Executing');
+                const messageBuilderInstance = new MessageBuilder();
+                this.getLogger().log('The user is:', user+' and the room is:', room.id+' and the artist id is:', artistId);
+                const message = await messageBuilderInstance.buildShareArtistMessage(artistId, user, room, persistence, read, http, this.getLogger());
                 this.getLogger().log('The message is:', JSON.stringify(message));
                 const messageBuilder = await modify.getCreator().startMessage(message);
                 await modify.getCreator().finish(messageBuilder);

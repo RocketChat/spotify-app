@@ -5,7 +5,9 @@ import { AppPersistence } from '../persistance/persistance';
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
 import { RocketChatAssociationModel, RocketChatAssociationRecord } from '@rocket.chat/apps-engine/definition/metadata';
 import { GetToken } from '../helpers/getToken';
-import { authLandingPageCode, authLandingPageFailureCode } from '../constants/constants';
+import { authLandingPageCode, authLandingPageFailureCode, REFRESH_TOKEN_ID } from '../constants/constants';
+import { IJobContext } from '@rocket.chat/apps-engine/definition/scheduler';
+import { tokenRefreshJob } from '../schedulers/tokenRefreshJob';
 
 export class authEndpoint extends ApiEndpoint {
     public path = 'hooks/authCallback';
@@ -48,11 +50,27 @@ export class authEndpoint extends ApiEndpoint {
         _persistence: IPersistence,
     ): Promise<IApiResponse> {
         this.app.getLogger().log('Incoming payload:', request);
-        
+        //modify.getScheduler().cancelJob(REFRESH_TOKEN_ID);
+
         const tokenGetter = new GetToken();
-        const getToken = await tokenGetter.getToken(this.app, request, _read, _http, _persistence);
+        const getToken = await tokenGetter.getToken(this.app, request, _read, _http, _persistence, modify);
 
         if(getToken){
+            const refreshTokenJob = new tokenRefreshJob(this.app);
+            const job = refreshTokenJob.getSpotifyTokenRefresh();
+            const jobContext: IJobContext = {
+                data: {
+                    request
+                }
+            };
+            
+            modify.getScheduler().scheduleRecurring({
+                ...job,
+                interval: '30 minutes',
+                data: jobContext,
+                skipImmediate: true
+            });
+
             //landing page displayed
             return this.success(authLandingPageCode);
         }else{
