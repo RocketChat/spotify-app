@@ -65,6 +65,7 @@ export class SpotifyAppApp extends App {
 			endpoints: [new authEndpoint(this)],
 		},);
 
+        //regrister the scheduler
         await configuration.scheduler.registerProcessors([new tokenRefreshJob(this).getSpotifyTokenRefresh()]);
 
     }
@@ -81,6 +82,8 @@ export class SpotifyAppApp extends App {
         const persistanceManager = new AppPersistence(persistence, read.getPersistenceReader(), read, this.getLogger());
         this.user=user;
         this.getLogger().log('user saved as global variable:', this.user); 
+
+        //this.getLogger().log('The current room is :', room.id);
 
         switch (actionId) {
             case uiconstants.SHARE_SONG_ACTION: {
@@ -143,9 +146,33 @@ export class SpotifyAppApp extends App {
         const persistanceManager = new AppPersistence(persistence, read.getPersistenceReader(), read, this.getLogger());
 
         this.getLogger().log('User Submitted View:', view.id);
+        this.getLogger().log('User Submitted View:', JSON.stringify(view));
 
         if (!view.submit) {
-            this.getLogger().warn('View submit is undefined.');
+            if(view.state){
+                    const menuBuilderInstance = new MenuBuilder();
+                    var inputValue;
+                    this.getLogger().log('User Clicked Search Button');
+                    const stateString = JSON.stringify(view.state);
+                    this.getLogger().log('State as string:', stateString);
+
+                    const regex = /"search_spotify_view"\s*:\s*"([^"]+)"/;
+                    const match = stateString.match(regex);
+
+                    if (match && match[1]) {
+                         inputValue = match[1];
+                        this.getLogger().log('Extracted search value:', inputValue);
+                    } else {
+                        this.getLogger().log('search_spotify_view not found in state');
+                    }
+                    const viewSearch = await menuBuilderInstance.buildPostSearchView(this.getLogger(),http, read, persistence, user, inputValue);
+                    await modify.getUiController().openSurfaceView(viewSearch, { triggerId: context.getInteractionData().triggerId }, user);
+            }
+            else{
+                this.getLogger().warn('View state and submit is undefined.');
+                return;
+            }
+            this.getLogger().warn('View submit is undefined but executed on view state.');
             return;
         }
 
@@ -250,6 +277,13 @@ export class SpotifyAppApp extends App {
                 await modify.getUiController().openSurfaceView(view, { triggerId: context.getInteractionData().triggerId }, user);
                 break;
             }
+            case uiconstants.SPOTIFY_SEARCH_ACTION: {
+                const menuBuilderInstance = new MenuBuilder();
+                this.getLogger().log('User Clicked Search Spotify Button');
+                const view = await menuBuilderInstance.buildSearchView(this.getLogger(),http, read, persistence, user);
+                await modify.getUiController().openSurfaceView(view, { triggerId: context.getInteractionData().triggerId }, user);
+                break;
+            }
             case uiconstants.SHARE_SONG_ACTION: {
                 this.getLogger().log('User Clicked Share Song Button Executing');
                 const messageBuilderInstance = new MessageBuilder();
@@ -272,6 +306,4 @@ export class SpotifyAppApp extends App {
             }
         }
     }
-
 }
-

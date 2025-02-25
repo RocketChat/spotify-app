@@ -32,7 +32,7 @@ export function getSpotifyMenuSection(logger: ILogger): LayoutBlock[] {
                     actionId: uiconstants.RECENTLY_PLAYED_SONG_ACTION,
                     blockId: uiconstants.SPOTIFY_MENU_BLOCK_ID,
                     appId: APP_ID,
-                    value: 'button_1'
+                    value: 'button_2'
                 },
                 {
                     type: 'button',
@@ -40,7 +40,15 @@ export function getSpotifyMenuSection(logger: ILogger): LayoutBlock[] {
                     actionId: uiconstants.MOST_PLAYED_ARTIST_ACTION,
                     blockId: uiconstants.SPOTIFY_MENU_BLOCK_ID,
                     appId: APP_ID,
-                    value: 'button_2'
+                    value: 'button_3'
+                },
+                {
+                    type: 'button',
+                    text: { type: 'plain_text', text: uiconstants.SPOTIFY_SEARCH_BUTTON },
+                    actionId: uiconstants.SPOTIFY_SEARCH_ACTION,
+                    blockId: uiconstants.SPOTIFY_MENU_BLOCK_ID,
+                    appId: APP_ID,
+                    value: 'button_4'
                 }
             ],
         },

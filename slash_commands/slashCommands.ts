@@ -14,8 +14,6 @@ export class getStatus implements ISlashCommand {
 
     private logger: ILogger;
 
-    //private responseValue: { display_name: string; email: string; followers: { total: number } };
-
 	constructor(logger: ILogger) {
         this.logger = logger;
 		this.command = 'get-status-spotify';

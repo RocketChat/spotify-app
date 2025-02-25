@@ -16,6 +16,9 @@ export const uiconstants = {
     MOST_PLAYED_ARTIST_ACTION: 'most_played_artist_action',
     SPOTIFY_MENU_BLOCK_ID: 'spotify_menu_block_id',
     SPOTIFY_MENU_TITLE: 'Spotify Menu',
+    SPOTIFY_SEARCH_BUTTON: 'Search Spotify',
+    SPOTIFY_SEARCH_ACTION: 'search_spotify_action',
+    SPOTIFY_SEARCH_VIEW: 'search_spotify_view',
 }
 
 export const persistenceconstants = {
